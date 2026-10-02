@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stazione Meteo - Casa Ale Romano</title>
+    <!-- Icone FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f0fdf4, #e0f2fe);
+            color: #1e293b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            color: #0f172a;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            font-size: 1rem;
+            color: #64748b;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 30px 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .icon-box {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+
+        .card.temp .icon-box {
+            background-color: #fef2f2;
+            color: #ef4444;
+        }
+
+        .card.pres .icon-box {
+            background-color: #f0f9ff;
+            color: #0284c7;
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .value {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .unit {
+            font-size: 1.4rem;
+            font-weight: 500;
+            color: #64748b;
+            margin-left: 2px;
+        }
+
+        .loading {
+            font-size: 1.5rem;
+            color: #94a3b8;
+            font-style: italic;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Casa Ale Romano</h1>
+        <p>Stazione Meteo Digitale</p>
+    </header>
+
+    <main class="dashboard">
+        <!-- Temperatura -->
+        <div class="card temp">
+            <div class="icon-box">
+                <i class="fa-solid fa-temperature-half"></i>
+            </div>
+            <h2>Temperatura</h2>
+            <div id="temp-value" class="value"><span class="loading">In corso...</span></div>
+        </div>
+
+        <!-- Pressione -->
+        <div class="card pres">
+            <div class="icon-box">
+                <i class="fa-solid fa-gauge-high"></i>
+            </div>
+            <h2>Pressione</h2>
+            <div id="pres-value" class="value"><span class="loading">In corso...</span></div>
+        </div>
+    </main>
+
+    <script>
+        // Configurazione Canale ThingSpeak
+        const channelID = '3516549';
+        // Endpoint API pubblica ThingSpeak per gli ultimi feed del canale
+        const url = `https://api.thingspeak.com/channels/${channelID}/feeds.json?results=1`;
+
+        async function fetchWeatherData() {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Errore nel recupero dati');
+                
+                const data = await response.json();
+                const lastFeed = data.feeds[0];
+
+                if (lastFeed) {
+                    // Supponendo che Field 1 sia Temperatura e Field 2 sia Pressione
+                    // Modificare i field (field1, field2, ecc.) in base alla configurazione reale su ThingSpeak
+                    const temp = parseFloat(lastFeed.field1).toFixed(1);
+                    const pres = parseFloat(lastFeed.field2).toFixed(0);
+
+                    if (!isNaN(temp)) {
+                        document.getElementById('temp-value').innerHTML = `${temp}<span class="unit">°C</span>`;
+                    } else {
+                        document.getElementById('temp-value').innerText = '--';
+                    }
+
+                    if (!isNaN(pres)) {
+                        document.getElementById('pres-value').innerHTML = `${pres}<span class="unit"> hPa</span>`;
+                    } else {
+                        document.getElementById('pres-value').innerText = '--';
+                    }
+                }
+            } catch (error) {
+                console.error('Errore:', error);
+                document.getElementById('temp-value').innerText = 'Errore';
+                document.getElementById('pres-value').innerText = 'Errore';
+            }
+        }
+
+        // Carica i dati all'avvio e aggiorna ogni 30 secondi
+        fetchWeatherData();
+        setInterval(fetchWeatherData, 30000);
+    </script>
+
+</body>
+</html>
