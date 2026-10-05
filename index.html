@@ -4,19 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stazione Meteo Ale Roano d. Lia</title>
-    <!-- Chart.js per i grafici -->
-    <script src="https://jsdelivr.net"></script>
     <!-- Google Fonts -->
     <link href="https://googleapis.com" rel="stylesheet">
     
     <style>
         :root {
-            --bg-color: #0b0f19;       
-            --card-bg: #151f32;        
-            --text-main: #f3f4f6;      
-            --text-muted: #9ca3af;     
-            --temp-color: #ff4a4a;     
-            --press-color: #38bdf8;    
+            --bg-color: #0b0f19;       /* Sfondo principale Dark Night */
+            --card-bg: #151f32;        /* Sfondo dei blocchi/schede */
+            --text-main: #f3f4f6;      /* Testo chiaro ad alta leggibilità */
+            --text-muted: #9ca3af;     /* Testo secondario attenuato */
+            --temp-color: #ff4a4a;     /* Neon Rosso per Temperatura */
+            --press-color: #38bdf8;    /* Neon Azzurro per Pressione */
             --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
             --border-color: #22314d;
         }
@@ -73,7 +71,7 @@
 
         .card-live {
             background: var(--card-bg);
-            padding: 18px 15px;
+            padding: 22px 15px;
             border-radius: 16px;
             box-shadow: var(--shadow);
             text-align: center;
@@ -102,7 +100,7 @@
         }
 
         .card-live .value {
-            font-size: 1.9rem;
+            font-size: 2.2rem;
             font-weight: 700;
         }
         
@@ -116,7 +114,7 @@
             color: var(--text-muted);
             margin-bottom: 20px;
             background: rgba(21, 31, 50, 0.5);
-            padding: 6px 12px;
+            padding: 8px 12px;
             border-radius: 20px;
             display: inline-block;
             width: 100%;
@@ -125,7 +123,7 @@
         
         .timestamp-container strong { color: #e5e7eb; }
 
-        /* Sezione Statistiche */
+        /* Sezione Statistiche delle ultime 12 ore basate sui dati reali calcolati */
         .stats-section {
             background: var(--card-bg);
             border-radius: 16px;
@@ -171,27 +169,6 @@
             font-size: 0.95rem;
             margin-top: 4px;
         }
-
-        /* Sezione Grafico */
-        .chart-container {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 15px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border-color);
-            position: relative;
-            height: 320px;
-            width: 100%;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px 20px;
-            font-size: 1rem;
-            color: var(--text-muted);
-        }
-        
-        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -199,12 +176,10 @@
     <div class="container">
         <header>
             <h1>Stazione Meteo Ale Roano d. Lia</h1>
-            <p>Canale ID: 3516549 &bull; Aggiornamento 5 min</p>
+            <p>Canale ID: 3516549 &bull; Monitoraggio Real-time</p>
         </header>
 
-        <div id="loader" class="loading">Inizializzazione ultrarapida...</div>
-
-        <div id="dashboard-content" class="hidden">
+        <div id="dashboard-content">
             <!-- Valori Real-time -->
             <div class="live-container">
                 <div class="card-live temp">
@@ -219,10 +194,10 @@
 
             <!-- Box di Timestamp Aggiornamento -->
             <div class="timestamp-container">
-                Ultimo aggiornamento: <strong id="live-timestamp">--/--/---- --:--:--</strong>
+                Ultima lettura: <strong id="live-timestamp">Sincronizzazione...</strong>
             </div>
 
-            <!-- Stats Temperatura -->
+            <!-- Stats Temperatura (Calcolate via API leggera) -->
             <div class="stats-section">
                 <h3>Analisi Temperatura (12h)</h3>
                 <div class="stats-grid">
@@ -232,7 +207,7 @@
                 </div>
             </div>
 
-            <!-- Stats Pressione -->
+            <!-- Stats Pressione (Calcolate via API leggera) -->
             <div class="stats-section">
                 <h3>Analisi Pressione (12h)</h3>
                 <div class="stats-grid">
@@ -241,11 +216,6 @@
                     <div class="stat-box"><span>MEDIA</span><strong id="press-avg" style="color: #e5e7eb;">--</strong></div>
                 </div>
             </div>
-
-            <!-- Grafico -->
-            <div class="chart-container">
-                <canvas id="tsChart"></canvas>
-            </div>
         </div>
     </div>
 
@@ -253,44 +223,52 @@
         const channelID = "3516549";
         const readAPIKey = "TV96LYPRY8JSDVR3";
         
-        // Estraiamo solo le ultime 12 ore (720 min) direttamente dal server
-        const url = `https://thingspeak.com{channelID}/feeds.json?api_key=${readAPIKey}&minutes=720`;
+        // Carichiamo lo stretto necessario per mantenere le statistiche (720 minuti = 12 ore)
+        // Eliminato l'invio e il rendering grafico, la pagina elabora solo i dati numerici puri velocissimamente
+        const urlHistory = `https://thingspeak.com{channelID}/feeds.json?api_key=${readAPIKey}&minutes=720`;
 
-        let myChart = null;
-
-        async function fetchData() {
+        async function fetchMeteoData() {
             try {
-                const response = await fetch(url);
+                const response = await fetch(urlHistory);
                 const data = await response.json();
                 
                 if(!data.feeds || data.feeds.length === 0) {
-                    document.getElementById('loader').innerText = "Nessun dato registrato nelle ultime 12 ore.";
+                    document.getElementById('live-timestamp').innerText = "Nessun dato disponibile nelle ultime 12 ore.";
                     return;
                 }
 
-                const allLabels = [];
                 const allTemp = [];
                 const allPress = [];
 
-                // 1. Processamento array completi (Indispensabile per Min, Max e Media reali)
+                // Estrazione dati per statistiche numeriche
                 data.feeds.forEach(feed => {
-                    const date = new Date(feed.created_at);
-                    const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    
                     const t = parseFloat(feed.field1);
                     const p = parseFloat(feed.field2);
 
                     if (!isNaN(t) && !isNaN(p)) {
-                        allLabels.push(timeString);
                         allTemp.push(t);
                         allPress.push(p);
                     }
                 });
 
-                // Aggiornamento Box Live
+                // Aggiornamento Valori Istantanei (Prende l'ultimo elemento dell'array delle 12 ore)
                 const ultimoFeed = data.feeds[data.feeds.length - 1];
-                document.getElementById('live-temp').innerHTML = `${parseFloat(ultimoFeed.field1).toFixed(1)} <span style="font-size:1.1rem; color:var(--text-muted); font-weight:400;">&deg;C</span>`;
-                document.getElementById('live-press').innerHTML = `${parseFloat(ultimoFeed.field2).toFixed(0)} <span style="font-size:1.1rem; color:var(--text-muted); font-weight:400;">hPa</span>`;
+                document.getElementById('live-temp').innerHTML = `${parseFloat(ultimoFeed.field1).toFixed(1)} <span style="font-size:1.2rem; color:var(--text-muted); font-weight:400;">&deg;C</span>`;
+                document.getElementById('live-press').innerHTML = `${parseFloat(ultimoFeed.field2).toFixed(0)} <span style="font-size:1.2rem; color:var(--text-muted); font-weight:400;">hPa</span>`;
 
-                // Aggiornamento Timestamp
+                // Aggiornamento del Timestamp dell'ultimo dato registrato
                 const dataUltimoDato = new Date(ultimoFeed.created_at);
+                const dataFormattata = dataUltimoDato.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                const oraFormattata = dataUltimoDato.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                document.getElementById('live-timestamp').innerText = `${dataFormattata} - ${oraFormattata}`;
+
+                // Calcolo e visualizzazione immediata di MIN, MAX e MEDIA
+                updateStats(allTemp, 'temp');
+                updateStats(allPress, 'press');
+
+            } catch (error) {
+                console.error("Errore caricamento:", error);
+                document.getElementById('live-timestamp').innerText = "Errore di connessione a ThingSpeak.";
+            }
+        }
+
