@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitoraggio ThingSpeak - Fast Load</title>
+    <title>Stazione Meteo Ale Roano d. Lia</title>
     <!-- Chart.js per i grafici -->
     <script src="https://jsdelivr.net"></script>
     <!-- Google Fonts -->
@@ -50,10 +50,11 @@
         }
 
         header h1 {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 700;
             color: #ffffff;
             letter-spacing: -0.5px;
+            line-height: 1.3;
         }
 
         header p {
@@ -197,11 +198,11 @@
 
     <div class="container">
         <header>
-            <h1>Meteo Dashboard</h1>
-            <p>Canale ID: 3516549 &bull; Ottimizzato</p>
+            <h1>Stazione Meteo Ale Roano d. Lia</h1>
+            <p>Canale ID: 3516549 &bull; Aggiornamento 5 min</p>
         </header>
 
-        <div id="loader" class="loading">Sincronizzazione ultrarapida in corso...</div>
+        <div id="loader" class="loading">Inizializzazione ultrarapida...</div>
 
         <div id="dashboard-content" class="hidden">
             <!-- Valori Real-time -->
@@ -252,8 +253,7 @@
         const channelID = "3516549";
         const readAPIKey = "TV96LYPRY8JSDVR3";
         
-        // OTTIMIZZAZIONE: Chiediamo a ThingSpeak solo i dati degli ultimi 720 minuti (12 ore).
-        // Questo taglia i tempi di risposta dell'API del 90%.
+        // Estraiamo solo le ultime 12 ore (720 min) direttamente dal server
         const url = `https://thingspeak.com{channelID}/feeds.json?api_key=${readAPIKey}&minutes=720`;
 
         let myChart = null;
@@ -268,10 +268,11 @@
                     return;
                 }
 
-                const labels = [];
-                const tempData = [];
-                const pressData = [];
+                const allLabels = [];
+                const allTemp = [];
+                const allPress = [];
 
+                // 1. Processamento array completi (Indispensabile per Min, Max e Media reali)
                 data.feeds.forEach(feed => {
                     const date = new Date(feed.created_at);
                     const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -280,9 +281,9 @@
                     const p = parseFloat(feed.field2);
 
                     if (!isNaN(t) && !isNaN(p)) {
-                        labels.push(timeString);
-                        tempData.push(t);
-                        pressData.push(p);
+                        allLabels.push(timeString);
+                        allTemp.push(t);
+                        allPress.push(p);
                     }
                 });
 
@@ -293,4 +294,3 @@
 
                 // Aggiornamento Timestamp
                 const dataUltimoDato = new Date(ultimoFeed.created_at);
-                const dataFormattata = dataUltimoDato.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
