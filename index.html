@@ -3,190 +3,299 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stazione Meteo - Casa Ale Romano</title>
-    <!-- Icone FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Monitoraggio ThingSpeak - Dark Night</title>
+    <!-- Chart.js per i grafici -->
+    <script src="https://jsdelivr.net"></script>
+    <!-- Google Fonts -->
+    <link href="https://googleapis.com" rel="stylesheet">
+    
     <style>
+        :root {
+            --bg-color: #0b0f19;       /* Sfondo principale Dark Night */
+            --card-bg: #151f32;        /* Sfondo dei blocchi/schede */
+            --text-main: #f3f4f6;      /* Testo chiaro ad alta leggibilità */
+            --text-muted: #9ca3af;     /* Testo secondario attenuato */
+            --temp-color: #ff4a4a;     /* Neon Rosso per Temperatura */
+            --press-color: #38bdf8;    /* Neon Azzurro per Pressione */
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            --border-color: #22314d;
+        }
+
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         body {
-            background: linear-gradient(135deg, #f0fdf4, #e0f2fe);
-            color: #1e293b;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 15px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             min-height: 100vh;
-            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
         }
 
         header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+            padding: 10px 0;
         }
 
         header h1 {
-            font-size: 2.2rem;
-            color: #0f172a;
+            font-size: 1.5rem;
             font-weight: 700;
-            margin-bottom: 5px;
+            color: #ffffff;
+            letter-spacing: -0.5px;
         }
 
         header p {
-            font-size: 1rem;
-            color: #64748b;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 5px;
         }
 
-        .dashboard {
+        /* Sezione Ultima Rilevazione */
+        .live-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 20px;
-            width: 100%;
-            max-width: 700px;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
         }
 
-        .card {
-            background: #ffffff;
-            border-radius: 24px;
-            padding: 30px 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            border: 1px solid #e2e8f0;
+        .card-live {
+            background: var(--card-bg);
+            padding: 18px 15px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
         }
 
-        .icon-box {
-            width: 65px;
-            height: 65px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.8rem;
-            margin-bottom: 15px;
+        /* Indicatore luminoso neon sulla sommità del widget */
+        .card-live::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
         }
+        .card-live.temp::before { background: var(--temp-color); box-shadow: 0 2px 10px var(--temp-color); }
+        .card-live.press::before { background: var(--press-color); box-shadow: 0 2px 10px var(--press-color); }
 
-        .card.temp .icon-box {
-            background-color: #fef2f2;
-            color: #ef4444;
-        }
-
-        .card.pres .icon-box {
-            background-color: #f0f9ff;
-            color: #0284c7;
-        }
-
-        .card h2 {
-            font-size: 1.1rem;
+        .card-live h2 {
+            font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #64748b;
-            margin-bottom: 10px;
-            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
         }
 
-        .value {
-            font-size: 2.8rem;
+        .card-live .value {
+            font-size: 1.9rem;
             font-weight: 700;
-            color: #0f172a;
+        }
+        
+        .card-live.temp .value { color: #ff6b6b; }
+        .card-live.press .value { color: #7dd3fc; }
+
+        /* Contenitore Timestamp */
+        .timestamp-container {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            background: rgba(21, 31, 50, 0.5);
+            padding: 6px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            width: 100%;
+            border: 1px solid rgba(34, 49, 77, 0.4);
+        }
+        
+        .timestamp-container strong {
+            color: #e5e7eb;
         }
 
-        .unit {
-            font-size: 1.4rem;
+        /* Sezione Statistiche */
+        .stats-section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 15px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .stats-section h3 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            color: #e5e7eb;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            text-align: center;
+        }
+
+        .stat-box {
+            padding: 10px 4px;
+            background: #111a2e;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+
+        .stat-box span {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text-muted);
             font-weight: 500;
-            color: #64748b;
-            margin-left: 2px;
+        }
+
+        .stat-box strong {
+            display: block;
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        /* Sezione Grafico */
+        .chart-container {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 15px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            position: relative;
+            height: 320px;
+            width: 100%;
         }
 
         .loading {
-            font-size: 1.5rem;
-            color: #94a3b8;
-            font-style: italic;
-            animation: pulse 1.5s infinite;
+            text-align: center;
+            padding: 40px 20px;
+            font-size: 1rem;
+            color: var(--text-muted);
         }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
-        }
+        
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>Casa Ale Romano</h1>
-        <p>Stazione Meteo Digitale</p>
-    </header>
+    <div class="container">
+        <header>
+            <h1>Meteo Dashboard</h1>
+            <p>Canale ID: 3516549 &bull; Monitoraggio Notturno</p>
+        </header>
 
-    <main class="dashboard">
-        <!-- Temperatura -->
-        <div class="card temp">
-            <div class="icon-box">
-                <i class="fa-solid fa-temperature-half"></i>
-            </div>
-            <h2>Temperatura</h2>
-            <div id="temp-value" class="value"><span class="loading">In corso...</span></div>
-        </div>
+        <div id="loader" class="loading">Sincronizzazione dati ThingSpeak in corso...</div>
 
-        <!-- Pressione -->
-        <div class="card pres">
-            <div class="icon-box">
-                <i class="fa-solid fa-gauge-high"></i>
+        <div id="dashboard-content" class="hidden">
+            <!-- Valori Real-time -->
+            <div class="live-container">
+                <div class="card-live temp">
+                    <h2>Temperatura</h2>
+                    <div class="value" id="live-temp">-- &deg;C</div>
+                </div>
+                <div class="card-live press">
+                    <h2>Pressione</h2>
+                    <div class="value" id="live-press">-- hPa</div>
+                </div>
             </div>
-            <h2>Pressione</h2>
-            <div id="pres-value" class="value"><span class="loading">In corso...</span></div>
+
+            <!-- Box di Timestamp Aggiornamento -->
+            <div class="timestamp-container">
+                Ultimo aggiornamento: <strong id="live-timestamp">--/--/---- --:--:--</strong>
+            </div>
+
+            <!-- Stats Temperatura -->
+            <div class="stats-section">
+                <h3>Analisi Temperatura (12h)</h3>
+                <div class="stats-grid">
+                    <div class="stat-box"><span>MIN</span><strong id="temp-min" style="color: #60a5fa;">--</strong></div>
+                    <div class="stat-box"><span>MAX</span><strong id="temp-max" style="color: #f87171;">--</strong></div>
+                    <div class="stat-box"><span>MEDIA</span><strong id="temp-avg" style="color: #e5e7eb;">--</strong></div>
+                </div>
+            </div>
+
+            <!-- Stats Pressione -->
+            <div class="stats-section">
+                <h3>Analisi Pressione (12h)</h3>
+                <div class="stats-grid">
+                    <div class="stat-box"><span>MIN</span><strong id="press-min" style="color: #60a5fa;">--</strong></div>
+                    <div class="stat-box"><span>MAX</span><strong id="press-max" style="color: #f87171;">--</strong></div>
+                    <div class="stat-box"><span>MEDIA</span><strong id="press-avg" style="color: #e5e7eb;">--</strong></div>
+                </div>
+            </div>
+
+            <!-- Grafico -->
+            <div class="chart-container">
+                <canvas id="tsChart"></canvas>
+            </div>
         </div>
-    </main>
+    </div>
 
     <script>
-        // Configurazione Canale ThingSpeak
-        const channelID = '3516549';
-        // Endpoint API pubblica ThingSpeak per gli ultimi feed del canale
-        const url = `https://api.thingspeak.com/channels/${channelID}/feeds.json?results=1`;
+        const channelID = "3516549";
+        const readAPIKey = "TV96LYPRY8JSDVR3";
+        const resultsCount = 200; 
+        const url = `https://thingspeak.com{channelID}/feeds.json?api_key=${readAPIKey}&results=${resultsCount}`;
 
-        async function fetchWeatherData() {
+        let myChart = null;
+
+        async function fetchData() {
             try {
                 const response = await fetch(url);
-                if (!response.ok) throw new Error('Errore nel recupero dati');
-                
                 const data = await response.json();
-                const lastFeed = data.feeds[0];
+                
+                if(!data.feeds || data.feeds.length === 0) return;
 
-                if (lastFeed) {
-                    // Supponendo che Field 1 sia Temperatura e Field 2 sia Pressione
-                    // Modificare i field (field1, field2, ecc.) in base alla configurazione reale su ThingSpeak
-                    const temp = parseFloat(lastFeed.field1).toFixed(1);
-                    const pres = parseFloat(lastFeed.field2).toFixed(0);
+                const ormai = new Date();
+                const dodiciOreFa = new Date(ormai.getTime() - (12 * 60 * 60 * 1000));
+                
+                const feeds12h = data.feeds.filter(feed => {
+                    const feedTime = new Date(feed.created_at);
+                    return feedTime >= dodiciOreFa;
+                });
 
-                    if (!isNaN(temp)) {
-                        document.getElementById('temp-value').innerHTML = `${temp}<span class="unit">°C</span>`;
-                    } else {
-                        document.getElementById('temp-value').innerText = '--';
-                    }
-
-                    if (!isNaN(pres)) {
-                        document.getElementById('pres-value').innerHTML = `${pres}<span class="unit"> hPa</span>`;
-                    } else {
-                        document.getElementById('pres-value').innerText = '--';
-                    }
+                if(feeds12h.length === 0) {
+                    document.getElementById('loader').innerText = "Nessun dato registrato nelle ultime 12 ore.";
+                    return;
                 }
-            } catch (error) {
-                console.error('Errore:', error);
-                document.getElementById('temp-value').innerText = 'Errore';
-                document.getElementById('pres-value').innerText = 'Errore';
-            }
-        }
 
-        // Carica i dati all'avvio e aggiorna ogni 30 secondi
-        fetchWeatherData();
-        setInterval(fetchWeatherData, 30000);
-    </script>
+                const labels = [];
+                const tempData = [];
+                const pressData = [];
 
-</body>
-</html>
+                feeds12h.forEach(feed => {
+                    const date = new Date(feed.created_at);
+                    const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    const t = parseFloat(feed.field1);
+                    const p = parseFloat(feed.field2);
+
+                    if (!isNaN(t) && !isNaN(p)) {
+                        labels.push(timeString);
+                        tempData.push(t);
+                        pressData.push(p);
+                    }
+                });
+
+                // Aggiornamento Box Live
+                const ultimoFeed = feeds12h[feeds12h.length - 1];
